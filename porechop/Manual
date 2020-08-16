@@ -1,0 +1,5 @@
+After docker and been installed
+:
+
+
+docker run -it -v /home/mbhallgren96/data/illumina/:/tmp/input/ nanozoo/nanoplot NanoPlot --fastq /tmp/input/CPO20180119_S35_L555_R1_001.fastq.gz /tmp/input/CPO20180119_S35_L555_R2_001.fastq.gz --maxlength 40000 --plots hex dot

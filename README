@@ -1,0 +1,21 @@
+Docker install:
+#from get_docker.com
+$ curl -fsSL https://get.docker.com -o get-docker.sh
+$ sh get-docker.sh
+$ sudo usermod -a -G docker $USER
+#Close terminal and reopen.
+#Alternatively docker can also be installed from the docker website.
+
+
+#Once docker has been succesfully installed, pull following images:
+Docker images:
+Nanopore:
+$ docker pull mcfonsecalab/qcat
+$ docker pull mcfonsecalab/nanofilt
+$ docker pull nanozoo/filtlong
+$ docker pull fjukstad/trimmomatic
+$ docker pull nanozoo/unicycler
+$ docker pull flowcraft/kraken:1.0-0.1
+$ docker pull replikation/abricate
+
+#Make sure any version of python3 is running on your system.
