@@ -11,7 +11,7 @@ parser.add_argument('-i_raw_illumina', action="store", nargs="+", type=str, dest
 parser.add_argument('-i_trimmed_nanopore', action="store", type=str, dest='i_trimmed_nanopore', default="", help='Input for trimmed Nanopore reads. Please use the complete path to the given file')
 parser.add_argument('-i_raw_nanopore', action="store", type=str, dest='i_raw_nanopore', default="", help='Input for untrimmed Nanopore reads. Please use the complete path to the given file')
 parser.add_argument('-trimmomatic_db', action="store", type=str, dest='trimmomatic_db', default="TruSeq3", help='Use either \"TruSeq3\" or \"Nextera\" as db.')
-parser.add_argument('-qscore', action="store", type=str, dest='qscore', default="7", help='qscore for nanopore filtering')
+parser.add_argument('-nanoporeqscore', action="store", type=str, dest='nanoporeqscore', default="7", help='nanoporeqscore for nanopore filtering')
 parser.add_argument("-o", action="store", dest="output_name", help="Name that you would like the output directory to be called.")
 args = parser.parse_args()
 
@@ -58,6 +58,7 @@ else:
         illumina_name = args.i_trimmed_illumina
 
 trimmomatic_db = ""
+
 #Initialize trimmomatic db
 #Trimmomatic DB:
 if args.trimmomatic_db == "TruSeq3":
@@ -97,10 +98,9 @@ elif args.i_raw_nanopore != "":
 cmd = "gunzip -c {} > {}/tmp/{}.fastq".format(args.i_raw_nanopore, target_dir, nanopore_name)
 os.system(cmd)
 
-
+print ("Trimmomatic started")
 if args.i_raw_illumina != "":
     if paired_end == True:
-        #docker run -it -v /home/mbhallgren96/data/illumina/:/tmp/illuminaPE/ dceoy/trimmomatic trimmomatic PE -phred33 /tmp/illuminaPE/CPO20180119_S35_L555_R1_001.fastq.gz /tmp/illuminaPE/CPO20180119_S35_L555_R2_001.fastq.gz /tmp/f_paired /tmp/f_unpaired /tmp/r_unpaired /tmp/r_paired ILLUMINACLIP:/tools/trimmomatic/adapters/NexteraPE-PE.fa:2:30:10 LEADING:20 TRAILING:20 MINLEN:140
         cmd = "docker run -it -v {}tmp/illuminaPE/:/tmp/illuminaPE/ --name trimmomatic_container{} fjukstad/trimmomatic PE /tmp/illuminaPE/{} /tmp/illuminaPE/{} /tmp/output_forward_paired.fq.gz /tmp/output_forward_unpaired.fq.gz /tmp/output_reverse_paired.fq.gz /tmp/output_reverse_unpaired.fq.gz ILLUMINACLIP:{}:2:30:10 LEADING:20 TRAILING:20 MINLEN:140".format(target_dir, jobid, illumina_name1, illumina_name2, trimmomatic_db)
         os.system(cmd)
 
@@ -123,10 +123,10 @@ if args.i_raw_illumina != "":
         cmd = "rm -r {}/tmp/illuminaPE".format(target_dir)
         os.system(cmd)
 
-        cmd = "gunzip -c {}/tmp/illuminaPE_trimmed/{} > {}/tmp/illuminaPE_trimmed/{}".format(target_dir, illumina_name1, target_dir, illumina_name1[:-3])
-        os.system(cmd)
-        cmd = "gunzip -c {}/tmp/illuminaPE_trimmed/{} > {}/tmp/illuminaPE_trimmed/{}".format(target_dir, illumina_name2, target_dir, illumina_name2[:-3])
-        os.system(cmd)
+        #cmd = "gunzip -c {}/tmp/illuminaPE_trimmed/{} > {}/tmp/illuminaPE_trimmed/{}".format(target_dir, illumina_name1, target_dir, illumina_name1[:-3])
+        #os.system(cmd)
+        #cmd = "gunzip -c {}/tmp/illuminaPE_trimmed/{} > {}/tmp/illuminaPE_trimmed/{}".format(target_dir, illumina_name2, target_dir, illumina_name2[:-3])
+        #os.system(cmd)
 
     else:
         cmd = "docker run -it -v {}:/tmp/illuminaSE/ --name trimmomatic_container{} dceoy/trimmomatic SE /tmp/illuminaSE/{} /tmp/output ILLUMINACLIP:{}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36".format(target_dir, jobid, illumina_name, trimmomatic_db)
@@ -137,6 +137,7 @@ if args.i_raw_illumina != "":
 
         cmd = "docker container rm {}".format(id)
         os.system(cmd)
+
 
 if args.i_raw_nanopore != "":
     print ("Qcat is running, be patient :) ")
@@ -159,7 +160,7 @@ else:
     trimmed_nanopore = nanopore_name
 
 #Nanopore pipeline
-cmd = "docker run --name nanofilt_q{}  -it -v {}/tmp/{}:/tmp/input/{} mcfonsecalab/nanofilt NanoFilt -q {} /tmp/input/{} | gzip > {}/tmp/{}.q{}_nanofilt".format(jobid, target_dir, trimmed_nanopore, trimmed_nanopore, args.qscore, trimmed_nanopore, target_dir, nanopore_name, args.qscore)
+cmd = "docker run --name nanofilt_q{}  -it -v {}/tmp/{}:/tmp/input/{} mcfonsecalab/nanofilt NanoFilt -q {} /tmp/input/{} | gzip > {}/tmp/{}.q{}_nanofilt".format(jobid, target_dir, trimmed_nanopore, trimmed_nanopore, args.nanoporeqscore, trimmed_nanopore, target_dir, nanopore_name, args.nanoporeqscore)
 os.system(cmd)
 
 proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("nanofilt_q", jobid), shell=True, stdout=subprocess.PIPE, )
@@ -182,8 +183,12 @@ id = output.decode().rstrip()
 cmd = "docker container rm {}".format(id)
 os.system(cmd)
 
+cmd = "mv {}/tmp/{}.q{}_nanofilt {}/tmp/{}.q{}_nanofilt.fastq".format(target_dir, nanopore_name, args.nanoporeqscore, target_dir, nanopore_name, args.nanoporeqscore)
+os.system(cmd)
+
 print ("nanofilt l 10000 complete")
-q_reads = "{}.q{}_nanofilt".format(nanopore_name, args.qscore)
+q_reads = "{}.q{}_nanofilt.fastq".format(nanopore_name, args.nanoporeqscore)
+
 """
 #Filtlong
 cmd = "docker run --name filtlong_500mbp -it -v {}/tmp/{}:/tmp/input/{} nanozoo/filtlong filtlong --target_bases 500000000 /tmp/input/{} > {}/tmp/{}.mbp500.fastq".format(target_dir, q_reads, q_reads, q_reads, target_dir, nanopore_name)
@@ -303,7 +308,7 @@ else:
 #HERE
 #Unicycler nanopore
 
-cmd = "docker run --name assembly_qreads{} -it -v {}/tmp/{}:/tmp/input/{} nanozoo/unicycler unicycler -l /tmp/input/{} -o /tmp/nanopore_assembly".format(jobid, target_dir, q_reads, q_reads, q_reads)
+cmd = "docker run --name assembly_qreads{} -it -v {}/tmp/{}:/tmp/input/{} nanozoo/unicycler:0.4.7-0--c0404e6 unicycler -l /tmp/input/{} -o /tmp/nanopore_assembly".format(jobid, target_dir, q_reads, q_reads, q_reads)
 os.system(cmd)
 
 proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("assembly_qreads", jobid), shell=True, stdout=subprocess.PIPE, )
@@ -340,7 +345,7 @@ if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
         cmd = "cp {}/tmp/{} {}/tmp/hybridinput/.".format(target_dir, trimmed_nanopore, target_dir)
         os.system(cmd)
 
-        cmd = "docker run --name hybrid_container{} -it -v {}/tmp/hybridinput/:/tmp/input/ nanozoo/unicycler unicycler -1 /tmp/input/{} -2 /tmp/input/{} -l /tmp/input/{} -o /tmp/hybrid_assembly".format(jobid, target_dir, illumina_name1_o, illumina_name2_o, trimmed_nanopore)
+        cmd = "docker run --name hybrid_container{} -it -v {}/tmp/hybridinput/:/tmp/input/ nanozoo/unicycler:0.4.7-0--c0404e6  unicycler -1 /tmp/input/{} -2 /tmp/input/{} -l /tmp/input/{} -o /tmp/hybrid_assembly".format(jobid, target_dir, illumina_name1_o, illumina_name2_o, trimmed_nanopore)
         os.system(cmd)
 
         proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("hybrid_container", jobid), shell=True,stdout=subprocess.PIPE, )
@@ -367,7 +372,7 @@ if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
         cmd = "mv {}/tmp/hybridinput/{} {}/tmp/hybridinput/{} ".format(target_dir, illumina_name, target_dir, illumina_name_o)
         os.system(cmd)
 
-        cmd = "docker run --name hybrid_container{} -it -v {}/tmp/hybridinput/:/tmp/input/ nanozoo/unicycler unicycler -s /tmp/input/{} -l /tmp/input/{} -o /tmp/hybrid_assembly".format(jobid, target_dir, illumina_name_o, trimmed_nanopore)
+        cmd = "docker run --name hybrid_container{} -it -v {}/tmp/hybridinput/:/tmp/input/ nanozoo/unicycler:0.4.7-0--c0404e6  unicycler -s /tmp/input/{} -l /tmp/input/{} -o /tmp/hybrid_assembly".format(jobid, target_dir, illumina_name_o, trimmed_nanopore)
         os.system(cmd)
 
         proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("hybrid_container", jobid), shell=True,stdout=subprocess.PIPE, )
@@ -402,7 +407,7 @@ cmd = "docker cp {}:/tmp/mbp500_assembly {}/tmp/.".format(id, target_dir)
 os.system(cmd)
 """
 
-cmd = "docker run --name nanopore_abricate_plasmid{} -it -v {}/tmp/nanopore_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db plasmidfinder_db -i /tmp/assembly.fasta -o /tmp/output".format(jobid, target_dir)
+cmd = "docker run --name nanopore_abricate_plasmid{} -it -v {}/tmp/nanopore_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db plasmidfinder /tmp/assembly.fasta > {}/tmp/nanopore_plasmidfinder_abricate".format(jobid, target_dir, target_dir)
 os.system(cmd)
 
 proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("nanopore_abricate_plasmid", jobid), shell=True, stdout=subprocess.PIPE, )
@@ -415,7 +420,7 @@ os.system(cmd)
 cmd = "docker container rm {}".format(id)
 os.system(cmd)
 
-cmd = "docker run --name nanopore_abricate_res{} -it -v {}/tmp/nanopore_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db resfinder_db -i /tmp/input/assembly.fasta -o /tmp/output".format(jobid, target_dir)
+cmd = "docker run --name nanopore_abricate_res{} -it -v {}/tmp/nanopore_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db resfinder /tmp/assembly.fasta > {}/tmp/nanopore_resfinder_abricate".format(jobid, target_dir, target_dir)
 os.system(cmd)
 
 proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("nanopore_abricate_res", jobid), shell=True, stdout=subprocess.PIPE, )
@@ -430,7 +435,7 @@ os.system(cmd)
 
 if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
 
-    cmd = "docker run --name hybrid_abricate_plasmid{} -it -v {}/tmp/hybrid_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db plasmidfinder_db -i /tmp/assembly.fasta -o /tmp/output".format(jobid, target_dir)
+    cmd = "docker run --name hybrid_abricate_plasmid{} -it -v {}/tmp/hybrid_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db plasmidfinder  /tmp/assembly.fasta > {}/tmp/hybrid_plasmidfinder_abricate".format(jobid, target_dir, target_dir)
     os.system(cmd)
 
     proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("hybrid_abricate_plasmid", jobid), shell=True,
@@ -444,7 +449,7 @@ if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
     cmd = "docker container rm {}".format(id)
     os.system(cmd)
 
-    cmd = "docker run --name hybrid_abricate_res{} -it -v {}/tmp/hybrid_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db resfinder_db -i /tmp/assembly.fasta -o /tmp/output".format(jobid, target_dir)
+    cmd = "docker run --name hybrid_abricate_res{} -it -v {}/tmp/hybrid_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db resfinder /tmp/assembly.fasta > {}/tmp/hybrid_resfinder_abricate".format(jobid, target_dir, target_dir)
     os.system(cmd)
 
     proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("hybrid_abricate_res", jobid), shell=True,
