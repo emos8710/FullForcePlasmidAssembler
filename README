@@ -10,6 +10,7 @@ $ sudo usermod -a -G docker $USER
 #Once docker has been succesfully installed, pull following images:
 Docker images:
 Nanopore:
+docker pull nanozoo/nanoplot
 $ docker pull mcfonsecalab/qcat
 $ docker pull mcfonsecalab/nanofilt
 $ docker pull nanozoo/filtlong

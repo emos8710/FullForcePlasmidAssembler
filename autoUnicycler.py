@@ -57,6 +57,7 @@ else:
     else:
         illumina_name = args.i_trimmed_illumina
 
+
 trimmomatic_db = ""
 
 #Initialize trimmomatic db
@@ -159,6 +160,25 @@ if args.i_raw_nanopore != "":
 else:
     trimmed_nanopore = nanopore_name
 
+#NANOPLOT
+cmd = "docker run --name nanoplot{} -it -v {}/tmp/{}:/tmp/{} nanozoo/nanoplot NanoPlot --fastq_rich /tmp/{} -o /tmp/nanoplots/ --N50 -p {} -t 8".format(jobid, target_dir, trimmed_nanopore, trimmed_nanopore, trimmed_nanopore, trimmed_nanopore)
+os.system(cmd)
+
+
+proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("nanoplot", jobid), shell=True, stdout=subprocess.PIPE, )
+output = proc.communicate()[0]
+id = output.decode().rstrip()
+
+cmd = "docker cp {}:/tmp/nanoplots {}/tmp/.".format(id, target_dir)
+os.system(cmd)
+
+
+cmd = "docker container rm {}".format(id)
+os.system(cmd)
+
+
+
+
 #Nanopore pipeline
 cmd = "docker run --name nanofilt_q{}  -it -v {}/tmp/{}:/tmp/input/{} mcfonsecalab/nanofilt NanoFilt -q {} /tmp/input/{} | gzip > {}/tmp/{}.q{}_nanofilt".format(jobid, target_dir, trimmed_nanopore, trimmed_nanopore, args.nanoporeqscore, trimmed_nanopore, target_dir, nanopore_name, args.nanoporeqscore)
 os.system(cmd)
@@ -238,6 +258,7 @@ os.system(cmd)
 cmd = "awk \'{if ($1>1) {print}}\' " + target_dir + "tmp/kraken_report_nanopore > " + target_dir + "tmp/kraken_report_nanopore_1percenthits"
 os.system(cmd)
 
+
 #Kraken on Illumina
 if paired_end == True:
     #NOT WORKING, no outputfile
@@ -273,6 +294,12 @@ if paired_end == True:
 
     cmd = "awk \'{if ($1>1) {print}}\' " + target_dir + "tmp/kraken_report_illumina > " + target_dir + "tmp/kraken_report_illumina_1percenthits"
     os.system(cmd)
+
+    cmd = "rm {}/tmp/kraken_report_illumina".format(target_dir)
+    os.system(cmd)
+
+    cmd = "rm {}/tmp/krakenoutput_illumina".format(target_dir)
+    os.system(cmd)
 else:
     cmd = "docker run --name kraken_container{} -it -v {}tmp/{}:/tmp/input/{} flowcraft/kraken:1.0-0.1 kraken --db /kraken_db/minikraken_20171013_4GB --output /tmp/krakenoutput_illumina /tmp/input/{}".format(jobid, target_dir, illumina_name, illumina_name, illumina_name)
     os.system(cmd)
@@ -303,6 +330,19 @@ else:
 
     cmd = "awk \'{if ($1>1) {print}}\' " + target_dir + "tmp/kraken_report_illumina > " + target_dir + "tmp/kraken_report_illumina_1percenthits"
     os.system(cmd)
+
+    cmd = "rm {}/tmp/kraken_report_illumina".format(target_dir)
+    os.system(cmd)
+
+    cmd = "rm {}/tmp/krakenoutput_illumina".format(target_dir)
+    os.system(cmd)
+
+cmd = "rm {}/tmp/kraken_report_nanopore".format(target_dir)
+os.system(cmd)
+
+cmd = "rm {}/tmp/krakenoutput_nanopore".format(target_dir)
+os.system(cmd)
+
 
 
 #HERE
@@ -414,28 +454,33 @@ proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("nanopore_abricate
 output = proc.communicate()[0]
 id = output.decode().rstrip()
 
-cmd = "docker cp {}:/tmp/output {}/tmp/abricate_nanopore_plasmidfinder.".format(id, target_dir)
-os.system(cmd)
+#cmd = "docker cp {}:/tmp/output {}/tmp/abricate_nanopore_plasmidfinder.".format(id, target_dir)
+#os.system(cmd)
 
 cmd = "docker container rm {}".format(id)
 os.system(cmd)
 
-cmd = "docker run --name nanopore_abricate_res{} -it -v {}/tmp/nanopore_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db resfinder /tmp/assembly.fasta > {}/tmp/nanopore_resfinder_abricate".format(jobid, target_dir, target_dir)
+cmd = "docker run --name nanopore_abricate_res{} -it -v {}/tmp/nanopore_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db resfinder --minid 80 /tmp/assembly.fasta > {}/tmp/nanopore_resfinder_abricate".format(jobid, target_dir, target_dir)
 os.system(cmd)
 
 proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("nanopore_abricate_res", jobid), shell=True, stdout=subprocess.PIPE, )
 output = proc.communicate()[0]
 id = output.decode().rstrip()
 
-cmd = "docker cp {}:/tmp/output {}/tmp/abricate_nanopore_resfinder.".format(id, target_dir)
-os.system(cmd)
+#cmd = "docker cp {}:/tmp/output {}/tmp/abricate_nanopore_resfinder.".format(id, target_dir)
+#os.system(cmd)
 
 cmd = "docker container rm {}".format(id)
 os.system(cmd)
 
+cmd = "mv {}/tmp/nanopore_resfinder_abricate {}/output/nanopore_assembly/nanopore_resfinder_abricate".format(target_dir, target_dir)
+os.system(cmd)
+cmd = "mv {}/tmp/nanopore_plasmidfinder_abricate {}/output/nanopore_assembly/nanopore_plasmidfinder_abricate".format(target_dir, target_dir)
+os.system(cmd)
+
 if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
 
-    cmd = "docker run --name hybrid_abricate_plasmid{} -it -v {}/tmp/hybrid_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db plasmidfinder  /tmp/assembly.fasta > {}/tmp/hybrid_plasmidfinder_abricate".format(jobid, target_dir, target_dir)
+    cmd = "docker run --name hybrid_abricate_plasmid{} -it -v {}/tmp/hybrid_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db plasmidfinder --minid 80 /tmp/assembly.fasta > {}/tmp/hybrid_plasmidfinder_abricate".format(jobid, target_dir, target_dir)
     os.system(cmd)
 
     proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("hybrid_abricate_plasmid", jobid), shell=True,
@@ -443,8 +488,8 @@ if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
     output = proc.communicate()[0]
     id = output.decode().rstrip()
 
-    cmd = "docker cp {}:/tmp/output {}/tmp/hybrid_abricate_plasmid.".format(id, target_dir)
-    os.system(cmd)
+    #cmd = "docker cp {}:/tmp/output {}/tmp/hybrid_abricate_plasmid.".format(id, target_dir)
+    #os.system(cmd)
 
     cmd = "docker container rm {}".format(id)
     os.system(cmd)
@@ -457,17 +502,48 @@ if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
     output = proc.communicate()[0]
     id = output.decode().rstrip()
 
-    cmd = "docker cp {}:/tmp/output {}/tmp/hybrid_abricate_resfinder.".format(id, target_dir)
-    os.system(cmd)
+    #cmd = "docker cp {}:/tmp/output {}/tmp/hybrid_abricate_resfinder.".format(id, target_dir)
+    #os.system(cmd)
 
     cmd = "docker container rm {}".format(id)
     os.system(cmd)
 
-sys.exit("Completed nanopore abricate")
+    cmd = "mv {}/tmp/hybrid_resfinder_abricate {}/output/hybrid_assembly/hybrid_resfinder_abricate".format(target_dir, target_dir)
+    os.system(cmd)
+    cmd = "mv {}/tmp/hybrid_plasmidfinder_abricate {}/output/hybrid_assembly/hybrid_plasmidfinder_abricate".format(target_dir, target_dir)
+    os.system(cmd)
+
+
+#Cleaning:
+if args.i_raw_illumina != "" and args.i_trimmed_illumina != "":
+    cmd = "rm -r {}/tmp/hybridinput".format(target_dir)
+    os.system(cmd)
+    cmd = "mv {}/tmp/illuminaPE_trimmed {}/tmp/illuminaReads".format(target_dir, target_dir)
+    os.system(cmd)
+
+
+
+cmd = "mkdir {}/tmp/nanoporeReads".format(target_dir)
+os.system(cmd)
+cmd = "mv {}/tmp/{}* {}/tmp/nanoporeReads/.".format(target_dir, nanopore_name, target_dir)
+os.system(cmd)
+
+cmd = "mv {}/tmp/kraken_report_nanopore_1percenthits {}/tmp/nanoporeReads".format(target_dir, target_dir)
+os.system(cmd)
+
+cmd = "mv {}/tmp/kraken_report_nanopore_1percenthits {}/tmp/nanoporeReads".format(target_dir, target_dir)
+os.system(cmd)
+
+
+cmd = "mv {}/tmp/* {}/output/.".format(target_dir, target_dir)
+os.system(cmd)
+cmd = "rm {}/tmp".format(target_dir)
+os.system(cmd)
+
 
 """
 
-#ABRRICATE HERE NOW
+#ABRRICATE HERE NOW{}
 #MAKE ABBRICATE
 
 #Fail in filtlong, so unicyclertesting now possible
@@ -479,6 +555,18 @@ print ("Abricate")
 """
 
 #UNICYCLER
+
+#Spørg henrik og Søren om vi skal gemme nogle output reads
+
+#Remove /tmp/hybrud input
+#remove illuminaPE_trimmed directory
+
+
+#Move nanopore_assembly directory to output
+#Move hybrid_assembly directory to output
+
+
+
 
 
 # DATABSER
