@@ -124,13 +124,9 @@ if args.i_raw_illumina != "":
         cmd = "rm -r {}/tmp/illuminaPE".format(target_dir)
         os.system(cmd)
 
-        #cmd = "gunzip -c {}/tmp/illuminaPE_trimmed/{} > {}/tmp/illuminaPE_trimmed/{}".format(target_dir, illumina_name1, target_dir, illumina_name1[:-3])
-        #os.system(cmd)
-        #cmd = "gunzip -c {}/tmp/illuminaPE_trimmed/{} > {}/tmp/illuminaPE_trimmed/{}".format(target_dir, illumina_name2, target_dir, illumina_name2[:-3])
-        #os.system(cmd)
 
     else:
-        cmd = "docker run -it -v {}:/tmp/illuminaSE/ --name trimmomatic_container{} dceoy/trimmomatic SE /tmp/illuminaSE/{} /tmp/output ILLUMINACLIP:{}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36".format(target_dir, jobid, illumina_name, trimmomatic_db)
+        cmd = "docker run -it -v {}:/tmp/illuminaSE/ --name trimmomatic_container{} fjukstad/trimmomatic SE /tmp/illuminaSE/{} /tmp/output ILLUMINACLIP:{}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36".format(target_dir, jobid, illumina_name, trimmomatic_db)
         os.system(cmd)
 
         cmd = "docker cp {}:/tmp/output {}/tmp/{}".format(id, target_dir, illumina_name)
@@ -161,7 +157,7 @@ else:
     trimmed_nanopore = nanopore_name
 
 #NANOPLOT
-cmd = "docker run --name nanoplot{} -it -v {}/tmp/{}:/tmp/{} nanozoo/nanoplot NanoPlot --fastq_rich /tmp/{} -o /tmp/nanoplots/ --N50 -p {} -t 8".format(jobid, target_dir, trimmed_nanopore, trimmed_nanopore, trimmed_nanopore, trimmed_nanopore)
+cmd = "docker run --name nanoplot{} -it -v {}/tmp/{}:/tmp/{} nanozoo/nanoplot:1.32.0--1ae6f5d NanoPlot --fastq_rich /tmp/{} -o /tmp/nanoplots/ --N50 -p {} -t 8".format(jobid, target_dir, trimmed_nanopore, trimmed_nanopore, trimmed_nanopore, trimmed_nanopore)
 os.system(cmd)
 
 
@@ -176,7 +172,21 @@ os.system(cmd)
 cmd = "docker container rm {}".format(id)
 os.system(cmd)
 
+#FASTQC:
+if args.i_raw_illumina != "" or args.i_trimmed_illumina != "":
+    cmd = "docker run --name fastqc{} -it -v {}/tmp/{}:/tmp/input nanozoo/fastqc fastqc --extract -t 8 /tmp/input/{} /tmp/input/{} ".format(jobid, target_dir, "illuminaPE_trimmed", illumina_name1, illumina_name2)
+    os.system(cmd)
 
+proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("fastqc", jobid), shell=True, stdout=subprocess.PIPE, )
+output = proc.communicate()[0]
+id = output.decode().rstrip()
+
+cmd = "docker cp {}:/tmp {}/tmp/fastqc".format(id, target_dir)
+os.system(cmd)
+
+
+cmd = "docker container rm {}".format(id)
+os.system(cmd)
 
 
 #Nanopore pipeline
@@ -209,23 +219,6 @@ os.system(cmd)
 print ("nanofilt l 10000 complete")
 q_reads = "{}.q{}_nanofilt.fastq".format(nanopore_name, args.nanoporeqscore)
 
-"""
-#Filtlong
-cmd = "docker run --name filtlong_500mbp -it -v {}/tmp/{}:/tmp/input/{} nanozoo/filtlong filtlong --target_bases 500000000 /tmp/input/{} > {}/tmp/{}.mbp500.fastq".format(target_dir, q_reads, q_reads, q_reads, target_dir, nanopore_name)
-os.system(cmd)
-
-proc = subprocess.Popen("docker ps -aqf \"name={}\"".format("filtlong_500mbp"), shell=True, stdout=subprocess.PIPE, )
-output = proc.communicate()[0]
-id = output.decode().rstrip()
-
-cmd = "docker container rm {}".format(id)
-os.system(cmd)
-
-sys.exit("filtlong done")
-
-
-mbp500_reads = "{}.mbp500.fastq".format(nanopore_name)
-"""
 #Kraken Nanopore
 cmd = "docker run --name kraken_container{}  -it -v {}/tmp/{}:/tmp/input/{} flowcraft/kraken:1.0-0.1 kraken --db /kraken_db/minikraken_20171013_4GB --output /tmp/krakenoutput_nanopore /tmp/input/{}".format(jobid, target_dir, q_reads, q_reads, q_reads)
 os.system(cmd)
@@ -430,23 +423,6 @@ if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
 #ABRRICATE HERE NOW
 
 
-
-
-
-"""
-#Unicycler nanopore mbp500
-
-cmd = "docker run --name mbp500_container -it -v {}/tmp/{}:/tmp/input/{} nanozoo/unicycler unicycler -l /tmp/input/{} -o /tmp/mbp500_assembly".format(target_dir, mbp500_reads, mbp500_reads, mbp500_reads)
-os.system(cmd)
-
-proc = subprocess.Popen("docker ps -aqf \"name={}\"".format("mbp500_container"), shell=True, stdout=subprocess.PIPE, )
-output = proc.communicate()[0]
-id = output.decode().rstrip()
-
-cmd = "docker cp {}:/tmp/mbp500_assembly {}/tmp/.".format(id, target_dir)
-os.system(cmd)
-"""
-
 cmd = "docker run --name nanopore_abricate_plasmid{} -it -v {}/tmp/nanopore_assembly/assembly.fasta:/tmp/assembly.fasta replikation/abricate --db plasmidfinder /tmp/assembly.fasta > {}/tmp/nanopore_plasmidfinder_abricate".format(jobid, target_dir, target_dir)
 os.system(cmd)
 
@@ -473,9 +449,9 @@ id = output.decode().rstrip()
 cmd = "docker container rm {}".format(id)
 os.system(cmd)
 
-cmd = "mv {}/tmp/nanopore_resfinder_abricate {}/output/nanopore_assembly/nanopore_resfinder_abricate".format(target_dir, target_dir)
+cmd = "mv {}/tmp/nanopore_resfinder_abricate {}/tmp/nanopore_assembly/nanopore_resfinder_abricate".format(target_dir, target_dir)
 os.system(cmd)
-cmd = "mv {}/tmp/nanopore_plasmidfinder_abricate {}/output/nanopore_assembly/nanopore_plasmidfinder_abricate".format(target_dir, target_dir)
+cmd = "mv {}/tmp/nanopore_plasmidfinder_abricate {}/tmp/nanopore_assembly/nanopore_plasmidfinder_abricate".format(target_dir, target_dir)
 os.system(cmd)
 
 if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
@@ -528,10 +504,19 @@ os.system(cmd)
 cmd = "mv {}/tmp/{}* {}/tmp/nanoporeReads/.".format(target_dir, nanopore_name, target_dir)
 os.system(cmd)
 
-cmd = "mv {}/tmp/kraken_report_nanopore_1percenthits {}/tmp/nanoporeReads".format(target_dir, target_dir)
+cmd = "mv {}/tmp/kraken_report_illumina_1percenthits {}/tmp/illuminaPE_trimmed".format(target_dir, target_dir)
 os.system(cmd)
 
 cmd = "mv {}/tmp/kraken_report_nanopore_1percenthits {}/tmp/nanoporeReads".format(target_dir, target_dir)
+os.system(cmd)
+
+cmd = "mv {}/tmp/fastqc/input/* {}/tmp/fastqc/.".format(target_dir, target_dir)
+os.system(cmd)
+
+cmd = "rm -r {}/tmp/fastqc/input".format(target_dir)
+os.system(cmd)
+
+cmd = "rm -r {}/tmp/fastqc/hsperfdata_root".format(target_dir)
 os.system(cmd)
 
 
@@ -540,60 +525,3 @@ os.system(cmd)
 cmd = "rm {}/tmp".format(target_dir)
 os.system(cmd)
 
-
-"""
-
-#ABRRICATE HERE NOW{}
-#MAKE ABBRICATE
-
-#Fail in filtlong, so unicyclertesting now possible
-print ("Abricate")
-#Abricate hybrid
-
-#docker run --name hybrid_abricate -it -v {}/tmp/hybridinput/:/tmp/input/
-
-"""
-
-#UNICYCLER
-
-#Spørg henrik og Søren om vi skal gemme nogle output reads
-
-#Remove /tmp/hybrud input
-#remove illuminaPE_trimmed directory
-
-
-#Move nanopore_assembly directory to output
-#Move hybrid_assembly directory to output
-
-
-
-
-
-# DATABSER
-# DOWNLOAD ftp://ftp.neb.com/pub/rebase/dna_mini_reg_seqs.txt
-# wget ftp://ftp.neb.com/pub/rebase/dna_mini_reg_seqs.txt
-#VENT MED RM FINDER
-
-#python3 au.py -i_raw_illumina /home/mbhallgren96/data/illumina/CPO20180119_S35_L555_R1_001.fastq.gz /home/mbhallgren96/data/illumina/CPO20180119_S35_L555_R2_001.fastq.gz -i_raw_nanopore /home/mbhallgren96/data/minion/CPO20180119.q7.fastq.gz -trimmomatic_db Nextera -o test1
-
-#List to be done:
-
-#min lenght flag
-#Brug 10.000 long til nanopore only og q-reads til hybrid
-#python3 /home/FFPA.py -i_raw_illumina /home/data/illumina/CPO20180119_S35_L555_R1_001.fastq.gz /home/data/illumina/CPO20180119_S35_L555_R2_001.fastq.gz -i_raw_nanopore /home/data/minion/CPO20180119.q7.fastq.gz -trimmomatic_db Nextera -o hybrid1
-#python3 /home/FFPA.py -i_raw_illumina /home/data/illumina/CPO20180119_S35_L555_R1_001.fastq.gz /home/data/illumina/CPO20180119_S35_L555_R2_001.fastq.gz -i_raw_nanopore /home/data/minion/CPO20180119.q7.fastq.gz -trimmomatic_db Nextera -o test_outout
-#Handle inputs correctly
-#docker run -it -v /home/mbhallgren96/data/minion/CPO20180119.q7.fastq:/tmp/input/CPO20180119.q7.fastq mcfonsecalab/qcat qcat -f /tmp/input/CPO20180119.q7.fastq  -o /tmp/CPO20180119.q7.fastq
-#Trimmomatic
-#docker run -it -v /home/mbhallgren96/test_outout/tmp/hybridinput/:/tmp/input/ nanozoo/unicycler unicycler -s /tmp/input/CPO20180119_S35_L555_R1_001.fastq.gz_trimmed -l /tmp/input/CPO20180119.q7.fastq.gz_trimmed.fastq -o /tmp/hybrid_assembly
-#Databases
-#docker run -it -v /home/mbhallgren96/hybrid3/tmp/hybridinput/:/tmp/input/ flowcraft/kraken:1.0-0.1 kraken --db /kraken_db/minikraken_20171013_4GB --output /tmp/krakenoutput_illumina /tmp/input/CPO20180119_S35_L555_R1_001.fastq.gz /tmp/input/CPO20180119_S35_L555_R2_001.fastq.gz
-
-#cmd = "docker run --name kraken_report -it -v {}/tmp/krakenoutput_illumina:/tmp/krakenoutput_illumina flowcraft/kraken:1.0-0.1 kraken-report --db /kraken_db/minikraken_20171013_4GB /tmp/krakenoutput_illumina > {}tmp/kraken_report_illumina".format(target_dir, target_dir)
-
-#python3 /home/FFPA.py -i_raw_illumina  /home/data/illumina/CPO20180119_S35_L555_R1_001.fastq.gz /home/data/illumina/CPO20180119_S35_L555_R2_001.fastq.gz -i_raw_nanopore /home/data/minion/CPO20180119.q7.fastq.gz -trimmomatic_db Nextera -o final1
-#FILTLONG OUTPUT ER IKKE FASTQ???????
-#docker run -it -v /home/mbhallgren96/test1/tmp/illuminaPE_trimmed/:/tmp/illu/ flowcraft/kraken:1.0-0.1 kraken --db /kraken_db/minikraken_20171013_4GB --output /tmp/krakenoutput_illumina /tmp/illu/CPO20180119_S35_L555_R1_001.fastq.gz_trimmed /tmp/illu/CPO20180119_S35_L555_R2_001.fastq.gz_trimmed
-#docker run --name mbp500_container -it -v /home/mbhallgren96/test1/tmp/CPO20180119.q7.fastq.gz.mbp500.fastq:/tmp/input/CPO20180119.q7.fastq.gz.mbp500.fastq nanozoo/unicycler unicycler -l /tmp/input/CPO20180119.q7.fastq.gz.mbp500.fastq -o /tmp/mbp500_assembly
-#docker run  -it -v /home/mbhallgren96/dna_mini_reg_seqs.txt:/tmp/input/dna_mini_reg_seqs.txt /bin/bash -c "cp /tmp/input/dna_mini_reg_seqs.txt sequences; abricate --setupdb; --list"
-#docker run --name filtlong_500mbp -it -v /home/mbhallgren96/test1/tmp/CPO20180119.q7.fastq.gz.q7_nanofilt :/tmp/input/CPO20180119.q7.fastq.gz.q7_nanofilt  nanozoo/filtlong filtlong --target_bases 500000000 /tmp/input/CPO20180119.q7.fastq.gz.q7_nanofilt  > /home/mbhallgren96/test1/tmp/CPO20180119.q7.fastq.gz.q7_nanofilt_out
