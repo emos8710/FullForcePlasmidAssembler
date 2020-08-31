@@ -1,24 +1,26 @@
 # FullForcePlasmidAssembler
-
-#Make sure any version of python3 is running on your system.
-
-
+Make sure any version of python3 is running on your system.
 ##### SETTING UP A NEW UNBUNTO BASED CLOUD SERVER #############
 -Create ubuntu instance with plenty of space and mem.
-#Python3 installed already
--install docker
+-install docker (This is an installation for linux system, but other installations can be found at https://docs.docker.com/get-docker/)
+```bash
 $ curl -fsSL https://get.docker.com -o get-docker.sh
 $ sh get-docker.sh
 $ sudo usermod -a -G docker $USER
-#Close terminal and reopen.
+```
+Now, close terminal and reopen to activate doc ker installation.
 
 #Git clone
-$ sudo usermod -a -G docker $USER
-#run images.py
-$ python3 images.py
+```bash
+git clone 
+```
 
-#Once docker has been succesfully installed, pull following images:
-Docker images:
+#Automatic installation of docker images:
+```bash
+$ python3 images.py
+```
+
+Docker images used are:
 fjukstad/trimmomatic
 mcfonsecalab/qcat
 nanozoo/nanoplot:1.32.0--1ae6f5d

@@ -484,9 +484,9 @@ if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
     cmd = "docker container rm {}".format(id)
     os.system(cmd)
 
-    cmd = "mv {}/tmp/hybrid_resfinder_abricate {}/output/hybrid_assembly/hybrid_resfinder_abricate".format(target_dir, target_dir)
+    cmd = "mv {}/tmp/hybrid_resfinder_abricate {}/tmp/hybrid_assembly/hybrid_resfinder_abricate".format(target_dir, target_dir)
     os.system(cmd)
-    cmd = "mv {}/tmp/hybrid_plasmidfinder_abricate {}/output/hybrid_assembly/hybrid_plasmidfinder_abricate".format(target_dir, target_dir)
+    cmd = "mv {}/tmp/hybrid_plasmidfinder_abricate {}/tmp/hybrid_assembly/hybrid_plasmidfinder_abricate".format(target_dir, target_dir)
     os.system(cmd)
 
 
@@ -522,6 +522,6 @@ os.system(cmd)
 
 cmd = "mv {}/tmp/* {}/output/.".format(target_dir, target_dir)
 os.system(cmd)
-cmd = "rm {}/tmp".format(target_dir)
+cmd = "rm -r {}/tmp".format(target_dir)
 os.system(cmd)
 
