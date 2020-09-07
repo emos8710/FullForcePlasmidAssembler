@@ -12,7 +12,7 @@ Now, close terminal and reopen to activate doc ker installation.
 
 #Git clone
 ```bash
-git clone https://github.com/MBHallgren/FullForcePlasmidAssembler.git
+$ git clone https://github.com/MBHallgren/FullForcePlasmidAssembler.git
 ```
 
 #Automatic installation of docker images:

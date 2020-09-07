@@ -6,7 +6,7 @@ import random
 import time
 
 parser = argparse.ArgumentParser(description='.')
-parser.add_argument('-i_trimmed_illumina', action="store", nargs="+", type=str, dest='i_trimmed_illumina', default="", help='Input for trimmed iilumina reads. If PE, give 2 input files seperated by a space. Please use the complete path to the given file')
+parser.add_argument('-i_trimmed_illumina', action="store", nargs="+", type=str, dest='i_trimmed_illumina',  default="", help='Input for trimmed iilumina reads. If PE, give 2 input files seperated by a space. Please use the complete path to the given file')
 parser.add_argument('-i_raw_illumina', action="store", nargs="+", type=str, dest='i_raw_illumina', default="", help='Input for untrimmed iilumina reads. If PE, give 2 input files seperated by a space. Please use the complete path to the given file')
 parser.add_argument('-i_trimmed_nanopore', action="store", type=str, dest='i_trimmed_nanopore', default="", help='Input for trimmed Nanopore reads. Please use the complete path to the given file')
 parser.add_argument('-i_raw_nanopore', action="store", type=str, dest='i_raw_nanopore', default="", help='Input for untrimmed Nanopore reads. Please use the complete path to the given file')
@@ -532,8 +532,6 @@ cmd = "mv {}/tmp/nanoporeReads/{}.10000.nanofilt {}/tmp/nanoporeReads/{}.10000.n
 os.system(cmd)
 cmd = "rm {}/tmp/nanoporeReads/{}.fastq.gz.fastq".format(target_dir, prefix_nanopore)
 os.system(cmd)
-#cmd = "mv {}/tmp/nanoporeReads/{}.fastq.gz {}/tmp/nanoporeReads/{}.fastq.gz".format(target_dir, nanopore_name, target_dir, prefix_nanopore)
-#os.system(cmd)
 cmd = "mv {}/tmp/nanoporeReads/{}_trimmed.fastq {}/tmp/nanoporeReads/{}_trimmed.fastq.gz".format(target_dir, nanopore_name, target_dir, prefix_nanopore)
 os.system(cmd)
 cmd = "mv {}/tmp/nanoporeReads/{}.fastq.gz.{}_nanofilt.fastq {}/tmp/nanoporeReads/{}.{}_nanofilt.fastq".format(target_dir, nanopore_name, args.nanoporeqscore, target_dir, prefix_nanopore, args.nanoporeqscore)
