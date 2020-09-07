@@ -20,7 +20,13 @@ $ git clone https://github.com/MBHallgren/FullForcePlasmidAssembler.git
 $ python3 images.py
 ```
 
-Docker images used are:
+#Pipeline
+FullForcePlasmidAssembler uses Trimmomatic and QCAT for tirmming illumina and nanopore data, respectively.
+FastQC and Nanoplots are used to quality check the trimmed reads.
+Kraken reports are generated from the reads, and then Unicycler is used to perform a hybrid assembly.
+Finally, Abcricate with plasmidfinder_db and resfinder_db is run.
+
+#Docker images used are:
 fjukstad/trimmomatic
 mcfonsecalab/qcat
 nanozoo/nanoplot:1.32.0--1ae6f5d
