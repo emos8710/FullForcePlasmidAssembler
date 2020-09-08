@@ -532,8 +532,6 @@ cmd = "mv {}/tmp/nanoporeReads/{}.10000.nanofilt {}/tmp/nanoporeReads/{}.10000.n
 os.system(cmd)
 cmd = "rm {}/tmp/nanoporeReads/{}.fastq.gz.fastq".format(target_dir, prefix_nanopore)
 os.system(cmd)
-cmd = "rm -r {}/tmp/fastqc".format(target_dir)
-os.system(cmd)
 cmd = "mv {}/tmp/nanoporeReads/{}_trimmed.fastq {}/tmp/nanoporeReads/{}_trimmed.fastq.gz".format(target_dir, nanopore_name, target_dir, prefix_nanopore)
 os.system(cmd)
 cmd = "mv {}/tmp/nanoporeReads/{}.fastq.gz.{}_nanofilt.fastq {}/tmp/nanoporeReads/{}.{}_nanofilt.fastq".format(target_dir, nanopore_name, args.nanoporeqscore, target_dir, prefix_nanopore, args.nanoporeqscore)
