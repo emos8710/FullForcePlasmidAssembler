@@ -341,7 +341,7 @@ os.system(cmd)
 #HERE
 #Unicycler nanopore
 
-cmd = "docker run --name assembly_qreads{} -it -v {}/tmp/{}:/tmp/input/{} nanozoo/unicycler:0.4.7-0--c0404e6 unicycler -l /tmp/input/{} -o /tmp/nanopore_assembly --no_pilon".format(jobid, target_dir, q_reads, q_reads, q_reads)
+cmd = "docker run --name assembly_qreads{} -it -v {}/tmp/{}:/tmp/input/{} nanozoo/unicycler:0.4.7-0--c0404e6 unicycler -l /tmp/input/{} -o /tmp/nanopore_assembly".format(jobid, target_dir, q_reads, q_reads, q_reads)
 os.system(cmd)
 
 proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("assembly_qreads", jobid), shell=True, stdout=subprocess.PIPE, )
@@ -378,7 +378,7 @@ if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
         cmd = "cp {}/tmp/{} {}/tmp/hybridinput/.".format(target_dir, trimmed_nanopore, target_dir)
         os.system(cmd)
 
-        cmd = "docker run --name hybrid_container{} -it -v {}/tmp/hybridinput/:/tmp/input/ nanozoo/unicycler:0.4.7-0--c0404e6  unicycler -1 /tmp/input/{} -2 /tmp/input/{} -l /tmp/input/{} -o /tmp/hybrid_assembly --no_pilon".format(jobid, target_dir, illumina_name1_o, illumina_name2_o, trimmed_nanopore)
+        cmd = "docker run --name hybrid_container{} -it -v {}/tmp/hybridinput/:/tmp/input/ nanozoo/unicycler:0.4.7-0--c0404e6  unicycler -1 /tmp/input/{} -2 /tmp/input/{} -l /tmp/input/{} -o /tmp/hybrid_assembly".format(jobid, target_dir, illumina_name1_o, illumina_name2_o, trimmed_nanopore)
         os.system(cmd)
 
         proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("hybrid_container", jobid), shell=True,stdout=subprocess.PIPE, )
@@ -405,7 +405,7 @@ if args.i_trimmed_illumina != "" or args.i_raw_illumina != "":
         cmd = "mv {}/tmp/hybridinput/{} {}/tmp/hybridinput/{} ".format(target_dir, illumina_name, target_dir, illumina_name_o)
         os.system(cmd)
 
-        cmd = "docker run --name hybrid_container{} -it -v {}/tmp/hybridinput/:/tmp/input/ nanozoo/unicycler:0.4.7-0--c0404e6  unicycler -s /tmp/input/{} -l /tmp/input/{} -o /tmp/hybrid_assembly --no_pilon".format(jobid, target_dir, illumina_name_o, trimmed_nanopore)
+        cmd = "docker run --name hybrid_container{} -it -v {}/tmp/hybridinput/:/tmp/input/ nanozoo/unicycler:0.4.7-0--c0404e6  unicycler -s /tmp/input/{} -l /tmp/input/{} -o /tmp/hybrid_assembly".format(jobid, target_dir, illumina_name_o, trimmed_nanopore)
         os.system(cmd)
 
         proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("hybrid_container", jobid), shell=True,stdout=subprocess.PIPE, )
